@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	gorgonaTests "github.com/zvfkjytytw/gorgona/internal/tests"
 )
@@ -16,15 +17,17 @@ type App struct {
 
 func New(maxFlows int) (*App, error) {
 	return &App{
-		maxFlows: maxFlows, 
+		maxFlows: maxFlows,
 	}, nil
 }
 
-func(a *App) Run() {
+func (a *App) Run() {
+	// Asking for the number of tests to run
 	var testsCount int
 	fmt.Print("how many tests should I run?: ")
-    fmt.Fscan(os.Stdin, &testsCount)
+	fmt.Fscan(os.Stdin, &testsCount)
 
+	// Creating a context and channels for running tests
 	ctx, cancel := context.WithCancel(context.Background())
 	execCh := make(chan func() error, maxChanBuffer)
 	sucCh := make(chan struct{}, maxChanBuffer)
@@ -35,35 +38,40 @@ func(a *App) Run() {
 		close(errCh)
 	}()
 
-	for i := 0; i < a.maxFlows; i++ {
+	// Running gorutines
+	for range a.maxFlows {
 		go flowExecuter(ctx, execCh, sucCh, errCh)
 	}
 
-	for i := 0; i < testsCount; i++ {
-		execCh <- gorgonaTests.QuizTest
+	// Running tsts
+	for range testsCount {
+		execCh <- gorgonaTests.TestQuiz
 	}
 
+	// Checking exit statuses
 	count := 0
-	for count <= testsCount {
+	for count < testsCount {
 		select {
-		case <- sucCh:
+		case <-sucCh:
 			count++
-		case err := <- errCh:
-			fmt.Printf("test error: %v", err)
+		case err := <-errCh:
+			fmt.Printf("test error: %v\n", err)
 			count++
 		}
 	}
 
+	time.Sleep(time.Second)
 	cancel()
 }
 
-func flowExecuter (ctx context.Context, execute <-chan func() error, success chan <- struct{}, errors chan <- error) {
+// Run the functions from the execute channel and distribute the launch results to the appropriate channels
+func flowExecuter(ctx context.Context, execute <-chan func() error, success chan<- struct{}, errors chan<- error) {
 	for {
 		select {
-		case <- ctx.Done():
+		case <-ctx.Done():
 			return
-		case f := <- execute:
-			err := f() 
+		case f := <-execute:
+			err := f()
 			if err != nil {
 				errors <- err
 			} else {
