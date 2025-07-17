@@ -13,7 +13,12 @@ const (
 	chromeDriverPort int    = 4444
 )
 
-func TestQuiz() error {
+type Selenium struct {
+	service *selenium.Service
+	caps    selenium.Capabilities
+}
+
+func New() (*Selenium, error) {
 	// Set up ChromeDriver options
 	opts := []selenium.ServiceOption{}
 	caps := selenium.Capabilities{
@@ -30,18 +35,24 @@ func TestQuiz() error {
 	caps.AddChrome(chromeCaps)
 
 	// Start ChromeDriver service
-	// service, err := selenium.NewChromeDriverService("chromedriver", 4444, opts...)\
 	service, err := selenium.NewChromeDriverService("chromedriver", chromeDriverPort, opts...)
 	if err != nil {
-		// log.Fatal("error starting ChromeDriver service:", err)
-		return fmt.Errorf("error starting ChromeDriver service: %v", err)
+		return nil, fmt.Errorf("error starting ChromeDriver service: %v", err)
 	}
-	defer service.Stop()
 
-	// Connect to ChromeDriver instance
-	driver, err := selenium.NewRemote(caps, "")
+	return &Selenium{
+		service: service,
+		caps:    caps,
+	}, nil
+}
+
+func (s *Selenium) Stop() {
+	s.service.Stop()
+}
+
+func (s *Selenium) TestQuiz() error {
+	driver, err := selenium.NewRemote(s.caps, "")
 	if err != nil {
-		// log.Fatal("error creating WebDriver:", err)
 		return fmt.Errorf("error creating WebDriver: %v", err)
 	}
 	defer driver.Quit()
@@ -58,14 +69,12 @@ func TestQuiz() error {
 		return fmt.Errorf("error finding start button: %v", err)
 	}
 	startTest.Click()
-	time.Sleep(time.Second)
 
 	var finish bool
 	for !finish {
 		// Check next page for the fault case
 		wrong, err := driver.FindElements(selenium.ByXPATH, "//h3[@class='failure']")
 		if err == nil && len(wrong) > 0 {
-			finish = true
 			return fmt.Errorf("test failed. Wrong answer")
 		}
 
@@ -73,7 +82,7 @@ func TestQuiz() error {
 		success, err := driver.FindElements(selenium.ByXPATH, "//h3[@class='success']")
 		if err == nil && len(success) > 0 {
 			finish = true
-			return nil
+			continue
 		}
 
 		// Go through all the answers and choose the longest one.
@@ -99,8 +108,9 @@ func TestQuiz() error {
 		if err != nil {
 			return fmt.Errorf("error finding next button: %v", err)
 		}
-		submit.Click()
+
 		time.Sleep(time.Second)
+		submit.Click()
 	}
 
 	return nil
