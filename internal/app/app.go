@@ -22,6 +22,14 @@ func New(maxFlows int) (*App, error) {
 }
 
 func (a *App) Run() {
+	// Create control structure for tests
+	seleniumTests, err := gorgonaTests.New()
+	if err != nil {
+		fmt.Printf("Test failed: %v", err)
+		return
+	}
+	defer seleniumTests.Stop()
+
 	// Asking for the number of tests to run
 	var testsCount int
 	fmt.Print("how many tests should I run?: ")
@@ -45,23 +53,28 @@ func (a *App) Run() {
 
 	// Running tsts
 	for range testsCount {
-		execCh <- gorgonaTests.TestQuiz
+		execCh <- seleniumTests.TestQuiz
 	}
 
 	// Checking exit statuses
 	count := 0
+	success := true
 	for count < testsCount {
 		select {
 		case <-sucCh:
 			count++
 		case err := <-errCh:
+			success = false
 			fmt.Printf("test error: %v\n", err)
 			count++
 		}
 	}
 
-	time.Sleep(time.Second)
 	cancel()
+	time.Sleep(time.Second)
+	if success {
+		fmt.Println("All tests successful")
+	}
 }
 
 // Run the functions from the execute channel and distribute the launch results to the appropriate channels
