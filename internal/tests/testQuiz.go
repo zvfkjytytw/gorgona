@@ -8,7 +8,12 @@ import (
 	"github.com/tebeka/selenium/chrome"
 )
 
-func QuizTest() error{
+const (
+	quizURL          string = "http://185.104.249.14/"
+	chromeDriverPort int    = 4444
+)
+
+func TestQuiz() error {
 	// Set up ChromeDriver options
 	opts := []selenium.ServiceOption{}
 	caps := selenium.Capabilities{
@@ -25,7 +30,8 @@ func QuizTest() error{
 	caps.AddChrome(chromeCaps)
 
 	// Start ChromeDriver service
-	service, err := selenium.NewChromeDriverService("chromedriver", 4444, opts...)
+	// service, err := selenium.NewChromeDriverService("chromedriver", 4444, opts...)\
+	service, err := selenium.NewChromeDriverService("chromedriver", chromeDriverPort, opts...)
 	if err != nil {
 		// log.Fatal("error starting ChromeDriver service:", err)
 		return fmt.Errorf("error starting ChromeDriver service: %v", err)
@@ -40,15 +46,15 @@ func QuizTest() error{
 	}
 	defer driver.Quit()
 
-	err = driver.Get("http://185.104.249.14/")
+	// Connect to test server
+	err = driver.Get(quizURL)
 	if err != nil {
-	// 	log.Fatal("error navigating to website:", err)
 		return fmt.Errorf("error navigating to website: %v", err)
-	}	
+	}
 
+	// Search and press the start button
 	startTest, err := driver.FindElement(selenium.ByXPATH, "//button")
 	if err != nil {
-		// log.Fatalf("error finding start button: %v", err)
 		return fmt.Errorf("error finding start button: %v", err)
 	}
 	startTest.Click()
@@ -56,25 +62,23 @@ func QuizTest() error{
 
 	var finish bool
 	for !finish {
+		// Check next page for the fault case
 		wrong, err := driver.FindElements(selenium.ByXPATH, "//h3[@class='failure']")
 		if err == nil && len(wrong) > 0 {
 			finish = true
-			// log.Fatal("test failed. Wrong answer")
-			// continue
 			return fmt.Errorf("test failed. Wrong answer")
 		}
 
+		// Check next page for the success case
 		success, err := driver.FindElements(selenium.ByXPATH, "//h3[@class='success']")
 		if err == nil && len(success) > 0 {
 			finish = true
-			// log.Print("test complite")
-			// continue
 			return nil
 		}
 
+		// Go through all the answers and choose the longest one.
 		elems, err := driver.FindElements(selenium.ByXPATH, "//input[@type='radio']")
 		if err != nil {
-			// log.Fatalf("test failed. No elements: %v", err)
 			return fmt.Errorf("test failed. no elements: %v", err)
 		}
 		index, longest := 0, 0
@@ -87,16 +91,12 @@ func QuizTest() error{
 				index = i
 				longest = len(value)
 			}
-
-			// log.Printf("Elem: %d\t\tValue: %v\t\tLong: %d\n", i, value, len(value))
-
 		}
-		// log.Printf("Select answer: %d\t\t%v\n", index, elems[index])
 		elems[index].Click()
 
+		// Search and press the submit button
 		submit, err := driver.FindElement(selenium.ByXPATH, "//button[@type='submit']")
 		if err != nil {
-			// log.Fatalf("error finding next button: %v", err)
 			return fmt.Errorf("error finding next button: %v", err)
 		}
 		submit.Click()
