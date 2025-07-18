@@ -23,7 +23,7 @@ func main() {
 	envF, ok := os.LookupEnv(envMaxGorutines)
 	if ok {
 		value, err := strconv.Atoi(envF)
-		if err != nil {
+		if err == nil {
 			maxGorutines = value
 		}
 	}
