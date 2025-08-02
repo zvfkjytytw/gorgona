@@ -2,7 +2,7 @@
 ## Начало работы
 
 1. [Скачайте](https://googlechromelabs.github.io/chrome-for-testing/#stable) совместимые версии Chrome и ChromeDriver:
-2. Установите Chrome. Расзипованный бнарник ChromeDriver скопируйте в одну из папок Path.
+2. Установите Chrome. Расзипованный бинарник ChromeDriver скопируйте в одну из папок Path.
 3. Склонируйте репозиторий и скачайте зависимости
 ```go mod tidy```
 4. Соберите проект и запустите его:
